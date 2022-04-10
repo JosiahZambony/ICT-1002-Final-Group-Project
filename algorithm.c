@@ -194,7 +194,7 @@ void gradient_descent_with_momentum() {
         }
 
         /* Print out values for current iteration*/
-        fprintf(fptr, "Iteration[%10d]: x = [%f, %f] y = %f \n", iteration, x_array[0], x_array[1], minimum);
+        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f ", iteration, x_array[0], x_array[1], minimum);
 
         /* Get interval for each step */
         for (int index = 0; index < dimension; index++) {
