@@ -15,7 +15,7 @@ y_array = []
 
 with open('result2.txt', 'rt') as myfile:
     for myline in myfile:
-        x = myline[23:41]
+        x = myline[20:38]
         y = myline[46:55]
         x_array.append(x)
         y_array.append(y)
