@@ -2,17 +2,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#pragma warning (disable : 4996)
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_matrix.h>
 
 void gradient_descent_with_k();
 void gradient_descent_with_momentum();
+void newtons_algorithm();
 double valueonly_beale2d(int dim, double* x);
 double valueandderivatives_beale2d(int dim, double* x, double* grad, double* hessian_vecshaped);
+gsl_matrix *invert_a_matrix(gsl_matrix *matrix, int size);
 
 
 int main() {
-    gradient_descent_with_k();
-    gradient_descent_with_momentum();
+    // gradient_descent_with_k();
+    // gradient_descent_with_momentum();
+    newtons_algorithm();
     return 0;
 }
 
@@ -78,15 +82,12 @@ void gradient_descent_with_k() {
         }
 
         /* Print out values for current iteration*/
-        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f ", iteration, x_array[0], x_array[1], minimum);
+        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f\n", iteration, x_array[0], x_array[1], minimum);
 
         /* Get interval for each step */
         for (int index = 0; index < dimension; index++) {
             interval[index] = fabs(x_array[index] - prev_x_array[index]);
         }
-
-        /* Print out values of interval between x interval and x-1 interval */
-        fprintf(fptr, "Interval[0]: %f Interval[1]: %f\n", interval[0], interval[0]);
 
         /* Break the optimzation loop if values in f(x) are found to surpass domain range */
         for (int index = 0; index < dimension; index++) {
@@ -121,7 +122,6 @@ void gradient_descent_with_k() {
 }
 
 
-
 void gradient_descent_with_momentum() {
     /*
         Optimzation Loop is breakable only:
@@ -144,6 +144,7 @@ void gradient_descent_with_momentum() {
     int iteration = 0;
     int max_iteration = 10000;
     int choice = 1;
+
     /* Create a file */
     FILE* fptr;
     fptr = fopen("export_data_from_c/result2.txt", "w");
@@ -194,15 +195,12 @@ void gradient_descent_with_momentum() {
         }
 
         /* Print out values for current iteration*/
-        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f ", iteration, x_array[0], x_array[1], minimum);
+        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f\n", iteration, x_array[0], x_array[1], minimum);
 
         /* Get interval for each step */
         for (int index = 0; index < dimension; index++) {
             interval[index] = fabs(x_array[index] - prev_x_array[index]);
         }
-
-        /* Print out values of interval between x interval and x-1 interval */
-        fprintf(fptr, "Interval[0]: %f Interval[1]: %f\n", interval[0], interval[0]);
 
         /* Break the optimzation loop if values in f(x) are found to surpass domain range */
         for (int index = 0; index < dimension; index++) {
@@ -235,6 +233,163 @@ void gradient_descent_with_momentum() {
     free(gradient_array);
     free(hessian_array);
 }
+
+
+void newtons_algorithm() {
+    double x1 = 4.0, x2 = 0.5;
+    double e = 0.00001;
+    double minimum = 0.0;
+    double min_range = -4.5, max_range = 4.5;
+    double threshold = 0.00001;
+    int dimension = 2;
+    int h_dimension = dimension * dimension;
+    int iteration = 0;
+    int max_iteration = 0;
+    int choice = 1;
+
+    /* Create a file */
+    FILE* fptr;
+    fptr = fopen("export_data_from_c/result3.txt", "w");
+    if (fptr == NULL) {
+        printf("An error has occured\n");
+        exit(1);
+    }
+
+    /* Create arrays dynamically for f(x), gradient & hessian */
+    double* x_array, * gradient_array, * hessian_array;
+    x_array = (double*)malloc(dimension * sizeof(double));
+    gradient_array = (double*)malloc(dimension * sizeof(double));
+    hessian_array = (double*)malloc(h_dimension * sizeof(double));
+
+    /* Create array to store previous iteration of x_array */
+    double* prev_x_array;
+    prev_x_array = (double*)malloc(dimension * sizeof(double));
+
+    /* Create array to find interval between each iteration of x_array */
+    double* interval;
+    interval = (double*)malloc(dimension * sizeof(double));
+
+    /* Put in starting point into x_array */
+    x_array[0] = x1;
+    x_array[1] = x2;
+
+    int row, col;
+    /* Create constant matrix of [Identity Matrix multiply by e-stabilizer] */
+    gsl_matrix* identity_matrix = gsl_matrix_alloc(dimension, dimension);
+    gsl_matrix_set_identity(identity_matrix);
+    for(row = 0; row < dimension; row++) {
+        for(col = 0; col < dimension; col++) {
+            gsl_matrix_set(identity_matrix, row, col, e * gsl_matrix_get(identity_matrix, row, col));
+        }
+    }
+
+    /* Create gradient matrix [gradient_matrix] */
+    gsl_matrix* gradient_matrix = gsl_matrix_alloc(1, dimension);
+    for(col = 0; col < dimension; col++) {
+        gsl_matrix_set(gradient_matrix, 0, col, 0);
+    }
+
+    /* Create Hessian matrix [hessian_matrix] */
+    gsl_matrix* hessian_matrix = gsl_matrix_alloc(dimension, dimension);
+    for(row = 0; row < dimension; row++) {
+        for(col = 0; col < dimension; col++) {
+            gsl_matrix_set(hessian_matrix, row, col, 0);
+        }
+    }
+
+    /* Create A_matrix and inverted_A_matrix */
+    gsl_matrix* A_matrix = gsl_matrix_alloc(dimension, dimension);
+    gsl_matrix* inverted_A_matrix = gsl_matrix_alloc(dimension, dimension);
+
+    /* Create B_matrix that stores result from multiplication of inverted_A_matrix and gradient_array */
+    gsl_matrix* B_matrix = gsl_matrix_alloc(dimension, 1);
+
+    while(1) {
+        /* Store previous information into prev_x_array */
+        memcpy(prev_x_array, x_array, (dimension * sizeof(double)));
+
+        /* Get minimum of current iteration */
+        minimum = valueandderivatives_beale2d(dimension, prev_x_array, gradient_array, hessian_array);
+
+        /* Store information from gradient_array to gradient_matrix */
+        for(col = 0; col < dimension; col++) {
+            gsl_matrix_set(gradient_matrix, 0, col, gradient_array[col]);
+        }
+
+        /* Store information from hessian_array to hessian_matrix */
+        int count = 0;
+        for(row = 0; row < dimension; row++) {
+            for(col = 0; col < dimension; col++) {
+                gsl_matrix_set(hessian_matrix, row, col, hessian_array[count]);
+                count++;
+            }
+        }
+
+        /* Do the formula of newtons algorithm */
+        /* Add Hessian Matrix and Identitfy Matix w e-stabilizer to A Matrix */
+        gsl_matrix_add(hessian_matrix, identity_matrix);
+        gsl_matrix_memcpy(A_matrix, hessian_matrix);
+        /* Invert Matrix */
+        inverted_A_matrix = invert_a_matrix(A_matrix, dimension);
+        /* Muliply inverted_A_matrix and grad_array into B_matrix */
+        for(row = 0; row < dimension; row++) {
+            double total = 0;
+            for(col = 0; col < dimension; col++) {
+                total = (gsl_matrix_get(inverted_A_matrix, row, col) * gradient_array[col]) + total;
+            }
+            gsl_matrix_set(B_matrix, row, 0, total);
+        }
+        /* Use prev_x_array to minus of B_matrix into x_array */
+        for(int index = 0; index < dimension; index++) {
+            row = index;
+            x_array[index] = prev_x_array[index] - gsl_matrix_get(B_matrix, row, 0);
+        }
+        /* Print out values for current iteration*/
+        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f\n", iteration, x_array[0], x_array[1], minimum);
+
+        /* Get interval for each step */
+        for (int index = 0; index < dimension; index++) {
+            interval[index] = fabs(x_array[index] - prev_x_array[index]);
+        }
+
+        /* Break the optimzation loop if values in f(x) are found to surpass domain range */
+        for (int index = 0; index < dimension; index++) {
+            if ((x_array[index] > max_range) || (x_array[index] < min_range)) {
+                printf("Boundary has been breached\n");
+                exit(1);
+            }
+        }
+
+        /* Break the optimzation loop if interval has reached desired threshold */
+        if (choice == 1) {
+            if (interval[0] <= threshold && iteration != 0) {
+                break;
+            }
+        }
+        /* Break the optimzation loop if max iteration has been reached */
+        if (choice == 2) {
+            if (iteration >= max_iteration) {
+                break;
+            }
+        }
+
+        /* Increment iteration */
+        iteration++;
+    }
+
+    /* Deallocate Memory*/
+    free(x_array);
+    free(prev_x_array);
+    free(gradient_array);
+    free(hessian_array);
+    gsl_matrix_free(identity_matrix);
+    gsl_matrix_free(gradient_matrix);
+    gsl_matrix_free(hessian_matrix);
+    gsl_matrix_free(A_matrix);
+    gsl_matrix_free(inverted_A_matrix);
+    gsl_matrix_free(B_matrix);
+}
+
 
 double valueonly_beale2d(int dim, double* x) {
     if (dim != 2) {
@@ -298,4 +453,21 @@ double valueandderivatives_beale2d(int dim, double* x, double* grad, double* hes
     hessian_vecshaped[0 + 2 * 1] = hessian_vecshaped[1 + 2 * 0];
     return ret;
 
+}
+
+
+gsl_matrix *invert_a_matrix(gsl_matrix *matrix, int size) {
+    gsl_permutation *p = gsl_permutation_alloc(size);
+    int s;
+
+    // Compute the LU decomposition of this matrix
+    gsl_linalg_LU_decomp(matrix, p, &s);
+
+    // Compute the  inverse of the LU decomposition
+    gsl_matrix *inv = gsl_matrix_alloc(size, size);
+    gsl_linalg_LU_invert(matrix, p, inv);
+
+    gsl_permutation_free(p);
+
+    return inv;
 }
