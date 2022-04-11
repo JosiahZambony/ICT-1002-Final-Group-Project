@@ -307,7 +307,7 @@ void gradient_descent_with_k(double* k, double *X1, double *X2, double *min, dou
         }
 
         /* Print out values for current iteration*/
-        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f\n", iteration, x_array[0], x_array[1], minimum);
+        fprintf(fptr, "%f, %f, %f\n", x_array[0], x_array[1], minimum);
 
         /* Get interval for each step */
         for (int index = 0; index < dimension; index++) {
@@ -420,7 +420,7 @@ void gradient_descent_with_momentum(double* k, double* m, double *X1, double *X2
         }
 
         /* Print out values for current iteration*/
-        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f\n", iteration, x_array[0], x_array[1], minimum);
+        fprintf(fptr, "%f, %f, %f\n", x_array[0], x_array[1], minimum);
 
         /* Get interval for each step */
         for (int index = 0; index < dimension; index++) {
@@ -580,7 +580,7 @@ void newtons_algorithm(double* in_e, double *X1, double *X2, double *min, double
             x_array[index] = prev_x_array[index] - gsl_matrix_get(B_matrix, row, 0);
         }
         /* Print out values for current iteration*/
-        fprintf(fptr, "Iteration[%d]: x = [%f, %f] y = %f\n", iteration, x_array[0], x_array[1], minimum);
+        fprintf(fptr, "%f, %f, %f\n", x_array[0], x_array[1], minimum);
 
         /* Get interval for each step */
         for (int index = 0; index < dimension; index++) {
